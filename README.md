@@ -8,6 +8,8 @@ Built on the data from my [Toy Store product analytics project](https://github.c
 
 **Tools:** React, TypeScript, Node.js, PostgreSQL, Gemini API
 
+![Asking a question and getting the table, SQL and summary](docs/demo.gif)
+
 ## How it works
 
 1. The model receives the question, the schema and the business rules, and returns a query or says the data can't answer the question.
