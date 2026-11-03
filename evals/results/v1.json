@@ -1,0 +1,272 @@
+[
+  {
+    "id": 1,
+    "category": "basic",
+    "question": "How many website sessions are there in total?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT COUNT(*) AS total_website_sessions FROM toystore.website_sessions",
+    "detail": ""
+  },
+  {
+    "id": 2,
+    "category": "basic",
+    "question": "What are the total number of orders and total gross revenue across all time?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT COUNT(order_id) AS total_orders, SUM(price_usd) AS total_gross_revenue FROM toystore.orders",
+    "detail": ""
+  },
+  {
+    "id": 3,
+    "category": "basic",
+    "question": "List each product with its launch date, oldest first.",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT product_name, created_at AS launch_date FROM toystore.products ORDER BY created_at ASC",
+    "detail": ""
+  },
+  {
+    "id": 4,
+    "category": "basic",
+    "question": "How many sessions came from each device type?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT device_type, COUNT(website_session_id) AS session_count FROM toystore.website_sessions GROUP BY device_type ORDER BY session_count DESC",
+    "detail": ""
+  },
+  {
+    "id": 5,
+    "category": "metrics",
+    "question": "What is the all-time average order value?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT AVG(price_usd) AS average_order_value FROM toystore.orders",
+    "detail": ""
+  },
+  {
+    "id": 6,
+    "category": "metrics",
+    "question": "What is the all-time gross margin percentage?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT SUM(price_usd - cogs_usd) / SUM(price_usd) AS gross_margin_percentage FROM toystore.orders",
+    "detail": ""
+  },
+  {
+    "id": 7,
+    "category": "metrics",
+    "question": "Show monthly sessions, orders and session-to-order conversion rate.",
+    "outcome": "wrong_result",
+    "repaired": false,
+    "sql": "SELECT DATE_TRUNC('month', s.created_at) AS month, COUNT(DISTINCT s.website_session_id) AS total_sessions, COUNT(DISTINCT o.order_id) AS total_orders, CAST(COUNT(DISTINCT o.order_id) AS NUMERIC) / NULLIF(COUNT(DISTINCT s.website_session_id), 0) AS session_to_order_conversion_rate FROM toystore.website_sessions s LEFT JOIN toystore.orders o ON s.website_session_id = o.website_session_id GROUP BY 1 ORDER BY 1",
+    "detail": "Partial first and last months, plus LEFT JOIN from sessions."
+  },
+  {
+    "id": 8,
+    "category": "metrics",
+    "question": "Show revenue per session for each month.",
+    "outcome": "wrong_result",
+    "repaired": false,
+    "sql": "SELECT DATE_TRUNC('month', ws.created_at) AS month, COUNT(DISTINCT ws.website_session_id) AS total_sessions, COALESCE(SUM(o.price_usd), 0.00) AS total_revenue, COALESCE(SUM(o.price_usd), 0.00) / NULLIF(COUNT(DISTINCT ws.website_session_id), 0) AS revenue_per_session FROM toystore.website_sessions ws LEFT JOIN toystore.orders o ON ws.website_session_id = o.website_session_id GROUP BY DATE_TRUNC('month', ws.created_at) ORDER BY month",
+    "detail": "The denominator must include sessions without orders."
+  },
+  {
+    "id": 9,
+    "category": "metrics",
+    "question": "What was gross revenue in 2013 and in 2014?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT EXTRACT(YEAR FROM created_at) AS year, SUM(price_usd) AS gross_revenue FROM toystore.orders WHERE EXTRACT(YEAR FROM created_at) IN (2013, 2014) GROUP BY EXTRACT(YEAR FROM created_at) ORDER BY year",
+    "detail": ""
+  },
+  {
+    "id": 10,
+    "category": "metrics",
+    "question": "What is the session-to-order conversion rate for each device type across all time?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT ws.device_type, COUNT(DISTINCT o.order_id)::NUMERIC / COUNT(DISTINCT ws.website_session_id) AS session_to_order_conversion_rate, COUNT(DISTINCT ws.website_session_id) AS total_sessions, COUNT(DISTINCT o.order_id) AS total_orders FROM toystore.website_sessions ws LEFT JOIN toystore.orders o ON ws.website_session_id = o.website_session_id GROUP BY ws.device_type",
+    "detail": ""
+  },
+  {
+    "id": 11,
+    "category": "channels",
+    "question": "For each marketing channel, show sessions, orders and conversion rate across all time.",
+    "outcome": "wrong_result",
+    "repaired": false,
+    "sql": "SELECT ws.utm_source AS marketing_channel, COUNT(DISTINCT ws.website_session_id) AS total_sessions, COUNT(DISTINCT o.order_id) AS total_orders, CAST(COUNT(DISTINCT o.order_id) AS NUMERIC) / NULLIF(COUNT(DISTINCT ws.website_session_id), 0) AS conversion_rate FROM toystore.website_sessions ws LEFT JOIN toystore.orders o ON ws.website_session_id = o.website_session_id GROUP BY ws.utm_source",
+    "detail": "Channel is not a column. It needs the business definition."
+  },
+  {
+    "id": 12,
+    "category": "channels",
+    "question": "What share of all sessions comes from paid non-brand traffic?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT COUNT(CASE WHEN utm_campaign = 'nonbrand' THEN 1 END)::NUMERIC / COUNT(*) AS paid_nonbrand_session_share FROM toystore.website_sessions",
+    "detail": ""
+  },
+  {
+    "id": 13,
+    "category": "channels",
+    "question": "For paid non-brand traffic only, compare revenue per session on mobile and desktop.",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT ws.device_type AS device_type, COUNT(DISTINCT ws.website_session_id) AS total_sessions, COALESCE(SUM(o.price_usd), 0.00) AS total_revenue, CASE WHEN COUNT(DISTINCT ws.website_session_id) = 0 THEN 0.00 ELSE COALESCE(SUM(o.price_usd), 0.00) / COUNT(DISTINCT ws.website_session_id) END AS revenue_per_session FROM toystore.website_sessions ws LEFT JOIN toystore.orders o ON ws.website_session_id = o.website_session_id WHERE ws.utm_campaign = 'nonbrand' AND ws.utm_source IS NOT NULL AND ws.device_type IN ('mobile', 'desktop') GROUP BY ws.device_type",
+    "detail": ""
+  },
+  {
+    "id": 14,
+    "category": "channels",
+    "question": "Show sessions by channel for each quarter.",
+    "outcome": "wrong_result",
+    "repaired": false,
+    "sql": "SELECT DATE_TRUNC('quarter', created_at) AS quarter, utm_source AS channel, COUNT(website_session_id) AS total_sessions FROM toystore.website_sessions GROUP BY 1, 2 ORDER BY quarter, channel",
+    "detail": "Partial first and last quarters."
+  },
+  {
+    "id": 15,
+    "category": "funnel",
+    "question": "For each device type, how many sessions reached the cart, shipping, billing and order confirmation pages?",
+    "outcome": "wrong_result",
+    "repaired": false,
+    "sql": "SELECT ws.device_type, COUNT(DISTINCT CASE WHEN wp.pageview_url = '/cart' THEN ws.website_session_id END) AS cart_sessions, COUNT(DISTINCT CASE WHEN wp.pageview_url = '/shipping' THEN ws.website_session_id END) AS shipping_sessions, COUNT(DISTINCT CASE WHEN wp.pageview_url = '/billing' THEN ws.website_session_id END) AS billing_sessions, COUNT(DISTINCT CASE WHEN wp.pageview_url = '/thank-you-for-your-order' THEN ws.website_session_id END) AS confirmation_sessions FROM toystore.website_sessions ws JOIN toystore.website_pageviews wp ON ws.website_session_id = wp.website_session_id GROUP BY ws.device_type",
+    "detail": "Billing has two URLs. Count sessions, not pageviews."
+  },
+  {
+    "id": 16,
+    "category": "funnel",
+    "question": "What is the overall bounce rate?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT ROUND(COUNT(CASE WHEN pv.pageview_count = 1 THEN 1 END) * 100.0 / COUNT(*), 2) AS bounce_rate_percentage FROM (SELECT website_session_id, COUNT(website_pageview_id) AS pageview_count FROM toystore.website_pageviews GROUP BY website_session_id) pv",
+    "detail": ""
+  },
+  {
+    "id": 17,
+    "category": "funnel",
+    "question": "Show sessions and bounce rate for each landing page.",
+    "outcome": "wrong_result",
+    "repaired": false,
+    "sql": "WITH landing_pages AS (\n    SELECT\n        ws.website_session_id,\n        wp.pageview_url AS landing_page\n    FROM toystore.website_sessions ws\n    JOIN (\n        SELECT\n            website_session_id,\n            pageview_url,\n            ROW_NUMBER() OVER (PARTITION BY website_session_id ORDER BY created_at ASC, website_pageview_id ASC) AS rn\n        FROM toystore.website_pageviews\n    ) wp ON ws.website_session_id = wp.website_session_id AND wp.rn = 1\n),\nsession_counts AS (\n    SELECT\n        website_session_id,\n        COUNT(*) AS pageview_count\n    FROM toystore.website_pageviews\n    GROUP BY website_session_id\n)\nSELECT\n    lp.landing_page,\n    COUNT(lp.website_session_id) AS total_sessions,\n    SUM(CASE WHEN sc.pageview_count = 1 THEN 1 ELSE 0 END)::NUMERIC / COUNT(lp.website_session_id) AS bounce_rate\nFROM landing_pages lp\nJOIN session_counts sc ON lp.website_session_id = sc.website_session_id\nGROUP BY lp.landing_page\nORDER BY total_sessions DESC",
+    "detail": "The landing page is the first pageview of the session."
+  },
+  {
+    "id": 18,
+    "category": "experiments",
+    "question": "Compare the order conversion rate of /billing and /billing-2 during the period when both pages were live.",
+    "outcome": "llm_error",
+    "repaired": false,
+    "sql": "",
+    "detail": "Bad control character in string literal in JSON at position 31 (line 1 column 32)"
+  },
+  {
+    "id": 19,
+    "category": "cross-sell",
+    "question": "For each month since the first cross-sell item was sold, what percentage of orders had more than one item?",
+    "outcome": "wrong_result",
+    "repaired": false,
+    "sql": "WITH first_cross_sell AS (\n    SELECT MIN(created_at) AS first_date\n    FROM toystore.order_items\n    WHERE is_primary_item = 0\n),\nmonthly_orders AS (\n    SELECT \n        DATE_TRUNC('month', o.created_at)::DATE AS order_month,\n        COUNT(o.order_id) AS total_orders,\n        COUNT(CASE WHEN o.items_purchased > 1 THEN o.order_id END) AS orders_with_multiple_items\n    FROM toystore.orders o\n    CROSS JOIN first_cross_sell f\n    WHERE o.created_at >= f.first_date\n    GROUP BY DATE_TRUNC('month', o.created_at)\n)\nSELECT \n    order_month,\n    total_orders,\n    orders_with_multiple_items,\n    ROUND(100.0 * orders_with_multiple_items / NULLIF(total_orders, 0), 2) AS percentage_multiple_items\nFROM monthly_orders\nORDER BY order_month",
+    "detail": "The start date must come from the data, and the last month is partial."
+  },
+  {
+    "id": 20,
+    "category": "cross-sell",
+    "question": "Which primary product and cross-sell product pairs are bought together most often? Show all pairs with their order counts.",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT p_primary.product_name AS primary_product_name, p_cross.product_name AS cross_sell_product_name, COUNT(DISTINCT oi_cross.order_id) AS order_count FROM toystore.order_items oi_primary JOIN toystore.order_items oi_cross ON oi_primary.order_id = oi_cross.order_id AND oi_primary.product_id <> oi_cross.product_id JOIN toystore.products p_primary ON oi_primary.product_id = p_primary.product_id JOIN toystore.products p_cross ON oi_cross.product_id = p_cross.product_id WHERE oi_primary.is_primary_item = 1 AND oi_cross.is_primary_item = 0 GROUP BY p_primary.product_name, p_cross.product_name ORDER BY order_count DESC",
+    "detail": ""
+  },
+  {
+    "id": 21,
+    "category": "cross-sell",
+    "question": "What is the all-time revenue of each product?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT p.product_id, p.product_name, COALESCE(SUM(oi.price_usd), 0.00) AS total_revenue FROM toystore.products p LEFT JOIN toystore.order_items oi ON p.product_id = oi.product_id GROUP BY p.product_id, p.product_name ORDER BY total_revenue DESC",
+    "detail": ""
+  },
+  {
+    "id": 22,
+    "category": "refunds",
+    "question": "What is the refund rate of each product?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT p.product_id, p.product_name, COUNT(oi.order_item_id) AS total_items_sold, COUNT(oir.order_item_refund_id) AS total_items_refunded, ROUND(COUNT(oir.order_item_refund_id)::NUMERIC / NULLIF(COUNT(oi.order_item_id), 0), 4) AS refund_rate FROM toystore.products p LEFT JOIN toystore.order_items oi ON p.product_id = oi.product_id LEFT JOIN toystore.order_item_refunds oir ON oi.order_item_id = oir.order_item_id GROUP BY p.product_id, p.product_name ORDER BY total_items_sold DESC",
+    "detail": ""
+  },
+  {
+    "id": 23,
+    "category": "refunds",
+    "question": "What is all-time net revenue?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT SUM(o.price_usd) - COALESCE(SUM(r.refund_amount_usd), 0.00) AS net_revenue FROM toystore.orders o LEFT JOIN toystore.order_item_refunds r ON o.order_id = r.order_id",
+    "detail": ""
+  },
+  {
+    "id": 24,
+    "category": "refunds",
+    "question": "What was net revenue for each year in which the orders were placed?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT EXTRACT(YEAR FROM o.created_at)::INT AS order_year, SUM(o.price_usd) - COALESCE(SUM(r.refund_amount_usd), 0) AS net_revenue FROM toystore.orders o LEFT JOIN toystore.order_item_refunds r ON o.order_id = r.order_id GROUP BY EXTRACT(YEAR FROM o.created_at) ORDER BY order_year",
+    "detail": ""
+  },
+  {
+    "id": 25,
+    "category": "repeat",
+    "question": "Compare the conversion rate of new and repeat sessions across all time.",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "SELECT ws.is_repeat_session, COUNT(DISTINCT ws.website_session_id) AS total_sessions, COUNT(DISTINCT o.order_id) AS total_orders, CAST(COUNT(DISTINCT o.order_id) AS NUMERIC) / NULLIF(COUNT(DISTINCT ws.website_session_id), 0) AS conversion_rate FROM toystore.website_sessions ws LEFT JOIN toystore.orders o ON ws.website_session_id = o.website_session_id GROUP BY ws.is_repeat_session",
+    "detail": ""
+  },
+  {
+    "id": 26,
+    "category": "repeat",
+    "question": "What percentage of customers placed more than one order?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "WITH customer_orders AS (SELECT user_id, COUNT(DISTINCT order_id) AS total_orders FROM toystore.orders GROUP BY user_id) SELECT ROUND(SUM(CASE WHEN total_orders > 1 THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC * 100, 2) AS percentage_multiple_orders FROM customer_orders",
+    "detail": ""
+  },
+  {
+    "id": 27,
+    "category": "repeat",
+    "question": "Of the visitors whose first session was between April 2012 and December 2014, what percentage came back within 30 days?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "WITH user_first_sessions AS (\n    SELECT \n        user_id,\n        MIN(created_at) AS first_session_at\n    FROM toystore.website_sessions\n    GROUP BY user_id\n    HAVING MIN(created_at) >= '2012-04-01 00:00:00'\n       AND MIN(created_at) < '2015-01-01 00:00:00'\n),\nuser_repeat_check AS (\n    SELECT \n        ufs.user_id,\n        MAX(CASE WHEN ws.created_at > ufs.first_session_at AND ws.created_at <= ufs.first_session_at + INTERVAL '30 days' THEN 1 ELSE 0 END) AS came_back_within_30_days\n    FROM user_first_sessions ufs\n    JOIN toystore.website_sessions ws ON ufs.user_id = ws.user_id\n    GROUP BY ufs.user_id\n)\nSELECT \n    COUNT(*) AS total_visitors,\n    SUM(came_back_within_30_days) AS visitors_returned,\n    ROUND(100.0 * SUM(came_back_within_30_days) / COUNT(*), 4) AS percentage_returned_within_30_days\nFROM user_repeat_check",
+    "detail": ""
+  },
+  {
+    "id": 28,
+    "category": "unanswerable",
+    "question": "What is the customer acquisition cost of paid non-brand traffic?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "",
+    "detail": "The database contains website sessions, orders, and traffic sources (utm_source, utm_campaign), but it does not store marketing spend or advertising cost data required to calculate Customer Acquisition Cost (CAC)."
+  },
+  {
+    "id": 29,
+    "category": "unanswerable",
+    "question": "Which city generates the most revenue?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "",
+    "detail": "The database schema does not contain any geographic information such as city, state, or address for users, sessions, or orders."
+  },
+  {
+    "id": 30,
+    "category": "unanswerable",
+    "question": "What is the open rate of our email campaigns?",
+    "outcome": "correct",
+    "repaired": false,
+    "sql": "",
+    "detail": "The database contains website sessions, pageviews, orders, and products, but does not contain any data regarding email campaigns, email sends, or email opens."
+  }
+]
